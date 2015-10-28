@@ -59,9 +59,29 @@ class Coffees(tag: Tag) extends Table[(String, Int, Double, Int, Int)](tag, "COF
     else prog1 +  "\n1"
   }
 
+  def generateCaseClasses(n: Int, res: Boolean): String = {
+    var valNameBase = "coffees"
+    def variable(i: Int): String = valNameBase + i
+
+    val prog = s"""
+      trait Exp
+      case class IR2(x: Int) extends Exp
+      case class IR1(x: Exp, y: Exp) extends Exp
+      val ${variable(0)} = IR2(1)
+      """
+
+    val prog1 = (0 until n).foldLeft(prog) {(prog, i) =>
+        prog + "\n" + s"""val ${variable(i + 1)} = IR1(IR2(1), IR1(${variable(i)}, IR1(${variable(i)}, IR2(1))))"""
+    }
+
+    // return a dummy result
+    if (res) prog1 + "\n" + variable(n)
+    else prog1 +  "\n1"
+  }
+
   var func: () => Unit = () => ()
 
-    measure method s"simple reification" in {
+    /*measure method s"simple reification" in {
       using(fieldIndexes)
         .setUp(v => {
 
@@ -74,6 +94,29 @@ class Coffees(tag: Tag) extends Table[(String, Int, Double, Int, Int)](tag, "COF
           |    def apply(): Unit = {
           """.stripMargin +
           generate(v, true) + """
+          |    }
+          |  }""".stripMargin
+          func = compileAndLoadSource(src, className)
+        })
+        .in { x =>
+          val x = func()
+          x
+         }
+       }*/
+
+        measure method s"simplest reification" in {
+      using(fieldIndexes)
+        .setUp(v => {
+
+          setupCompiler()
+
+          val className = "SimpleReification" + v
+          val src = s"""
+          |  import reification._
+          |  class $className() extends Function0[Unit] {
+          |    def apply(): Unit = {
+          """.stripMargin +
+          generateCaseClasses(v, true) + """
           |    }
           |  }""".stripMargin
           func = compileAndLoadSource(src, className)
