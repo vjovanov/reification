@@ -8,6 +8,11 @@ import benchmark._
 import org.scalameter.api._
 import org.scalameter.reporting._
 
+trait Exp
+case class IR2(x: Int) extends Exp
+case class IR1(x: Exp, y: Exp) extends Exp
+class Box(i: Int)
+
 object ReificationBenchmark extends PerformanceTest.OfflineReport with TypecheckingBenchmarkingSuite {
   // Definition of the SUPPLIERS table
 class Suppliers(tag: Tag) extends Table[(Int, String, String, String, String, String)](tag, "SUPPLIERS") {
@@ -64,9 +69,6 @@ class Coffees(tag: Tag) extends Table[(String, Int, Double, Int, Int)](tag, "COF
     def variable(i: Int): String = valNameBase + i
 
     val prog = s"""
-      trait Exp
-      case class IR2(x: Int) extends Exp
-      case class IR1(x: Exp, y: Exp) extends Exp
       val ${variable(0)} = IR2(1)
       """
 
@@ -79,7 +81,7 @@ class Coffees(tag: Tag) extends Table[(String, Int, Double, Int, Int)](tag, "COF
     else prog1 +  "\n1"
   }
 
-  var func: () => Unit = () => ()
+  var func: () => Unit = () => IR2(1)
 
     /*measure method s"simple reification" in {
       using(fieldIndexes)
@@ -116,14 +118,14 @@ class Coffees(tag: Tag) extends Table[(String, Int, Double, Int, Int)](tag, "COF
           |  class $className() extends Function0[Unit] {
           |    def apply(): Unit = {
           """.stripMargin +
-          generateCaseClasses(v, true) + """
+          generateCaseClasses(v, true) +
+          """
           |    }
           |  }""".stripMargin
           func = compileAndLoadSource(src, className)
         })
         .in { x =>
-          val x = func()
-          x
-         }
+          func()
+        }
        }
 }
